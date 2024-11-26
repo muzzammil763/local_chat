@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Network Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #dc3545;
+            margin-left: 10px;
+            display: inline-block;
+        }
+
+        .status-indicator.connected {
+            background: #28a745;
+        }
+
+        .chat-area {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin: 5px 0;
+            clear: both;
+        }
+
+        .message.received {
+            background: #e9ecef;
+            float: left;
+        }
+
+        .message.sent {
+            background: #007bff;
+            color: white;
+            float: right;
+        }
+
+        .file-message {
+            background: #d4edda !important;
+            color: #155724 !important;
+            cursor: pointer;
+        }
+
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            outline: none;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+
+        .file-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+
+        #roomControls {
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            border-radius: 10px 10px 0 0;
+        }
+
+        #roomId {
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="roomControls">
+            <input type="text" id="roomId" placeholder="Enter room ID">
+            <button class="btn" onclick="joinRoom()">Join Room</button>
+            <button class="btn" onclick="createRoom()">Create New Room</button>
+        </div>
+        
+        <div class="header">
+            <h1>Local Chat <span id="roomDisplay"></span></h1>
+            <div>
+                <span id="statusText">Disconnected</span>
+                <span class="status-indicator" id="statusIndicator"></span>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chatArea"></div>
+
+        <div class="input-area">
+            <input type="text" class="message-input" id="messageInput" placeholder="Type a message..." disabled>
+            <input type="file" id="fileInput" style="display: none">
+            <button class="btn" onclick="document.getElementById('fileInput').click()" disabled id="fileButton">📎</button>
+            <button class="btn" onclick="sendMessage()" disabled id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let currentRoom = '';
+        const chatArea = document.getElementById('chatArea');
+        const messageInput = document.getElementById('messageInput');
+        const fileInput = document.getElementById('fileInput');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const sendButton = document.getElementById('sendButton');
+        const fileButton = document.getElementById('fileButton');
+        const roomDisplay = document.getElementById('roomDisplay');
+
+function connectWebSocket() {
+    ws = new WebSocket(`ws://${window.location.hostname}:3000`);
+
+    ws.onopen = () => {
+        statusText.textContent = 'Connected to server';
+        statusIndicator.classList.add('connected');
+    };
+
+    ws.onclose = () => {
+        statusText.textContent = 'Disconnected';
+        statusIndicator.classList.remove('connected');
+        disableChat();
+        setTimeout(connectWebSocket, 3000);
+    };
+
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        statusText.textContent = 'Connection error';
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleMessage(data);
+    };
+}            // Use secure WebSocket if on HTTPS
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//local-chat-server.glitch.me`);
+
+            ws.onopen = () => {
+                statusText.textContent = 'Connected to server';
+                statusIndicator.classList.add('connected');
+            };
+
+            ws.onclose = () => {
+                statusText.textContent = 'Disconnected';
+                statusIndicator.classList.remove('connected');
+                disableChat();
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleMessage(data);
+            };
+        
+
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'room-created':
+                    currentRoom = data.roomId;
+                    roomDisplay.textContent = `(Room: ${currentRoom})`;
+                    enableChat();
+                    break;
+                case 'room-joined':
+                    currentRoom = data.roomId;
+                    roomDisplay.textContent = `(Room: ${currentRoom})`;
+                    enableChat();
+                    break;
+                case 'chat':
+                case 'file':
+                    displayMessage(data, 'received');
+                    break;
+                case 'error':
+                    alert(data.message);
+                    break;
+            }
+        }
+
+        function createRoom() {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'create-room' }));
+            }
+        }
+
+        function joinRoom() {
+            const roomId = document.getElementById('roomId').value.trim();
+            if (!roomId) {
+                alert('Please enter a room ID');
+                return;
+            }
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'join-room', roomId }));
+            }
+        }
+
+        function enableChat() {
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            fileButton.disabled = false;
+            document.getElementById('roomControls').style.display = 'none';
+        }
+
+        function disableChat() {
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            fileButton.disabled = true;
+            document.getElementById('roomControls').style.display = 'block';
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message && ws.readyState === WebSocket.OPEN) {
+                const messageData = {
+                    type: 'chat',
+                    content: message,
+                    roomId: currentRoom,
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(messageData));
+                displayMessage(messageData, 'sent');
+                messageInput.value = '';
+            }
+        }
+
+        function displayMessage(data, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+
+            if (data.type === 'file') {
+                messageDiv.classList.add('file-message');
+                if (data.fileType.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = data.content;
+                    img.className = 'file-preview';
+                    messageDiv.appendChild(img);
+                }
+
+                const link = document.createElement('a');
+                link.href = data.content;
+                link.download = data.filename;
+                link.textContent = `📎 ${data.filename}`;
+                messageDiv.appendChild(link);
+            } else {
+                messageDiv.textContent = data.content;
+            }
+
+            const timestamp = document.createElement('div');
+            timestamp.style.fontSize = '0.8em';
+            timestamp.style.opacity = '0.7';
+            timestamp.style.marginTop = '5px';
+            timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
+            messageDiv.appendChild(timestamp);
+
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        fileInput.onchange = async function() {
+            const file = this.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const messageData = {
+                    type: 'file',
+                    filename: file.name,
+                    content: e.target.result,
+                    fileType: file.type,
+                    roomId: currentRoom,
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(messageData));
+                displayMessage(messageData, 'sent');
+            };
+            reader.readAsDataURL(file);
+            this.value = '';
+        };
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Start connection
+        connectWebSocket();
+    </script>
+</body>
+</html>
