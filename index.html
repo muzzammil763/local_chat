@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Local Chat</title>
+    <title>P2P Local Chat</title>
     <style>
-        /* Previous styles remain the same */
         * {
             margin: 0;
             padding: 0;
@@ -63,25 +62,25 @@
             box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
         }
 
-        #roomControls {
+        #connectionControls {
             padding: 30px;
             background: #e8f0fe;
             text-align: center;
             transition: all 0.3s ease;
         }
 
-        #roomControls.hidden {
+        #connectionControls.hidden {
             display: none;
         }
 
-        .room-input-group {
+        .connection-input-group {
             display: flex;
             gap: 10px;
             justify-content: center;
             margin-bottom: 15px;
         }
 
-        #roomId {
+        #peerId {
             padding: 12px 20px;
             border: 2px solid #16213e;
             border-radius: 10px;
@@ -90,7 +89,7 @@
             transition: all 0.3s;
         }
 
-        #roomId:focus {
+        #peerId:focus {
             outline: none;
             border-color: #0066cc;
             box-shadow: 0 0 0 3px rgba(0,102,204,0.2);
@@ -209,23 +208,32 @@
             from { transform: translateX(100%); }
             to { transform: translateX(0); }
         }
+
+        #myId {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            margin-top: 10px;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="roomControls">
-            <h2 style="margin-bottom: 20px; color: #16213e;">Join or Create a Chat Room</h2>
-            <div class="room-input-group">
-                <input type="text" id="roomId" placeholder="Enter room ID to join...">
-                <button class="btn" onclick="joinRoom()">Join Room</button>
-                <button class="btn secondary" onclick="createRoom()">Create New Room</button>
+        <div id="connectionControls">
+            <h2 style="margin-bottom: 20px; color: #16213e;">Connect with Peers</h2>
+            <div id="myId"></div>
+            <div class="connection-input-group" style="margin-top: 20px;">
+                <input type="text" id="peerId" placeholder="Enter peer ID to connect...">
+                <button class="btn" onclick="connectToPeer()">Connect</button>
             </div>
         </div>
         
         <div class="header">
-            <h1>Local Chat <span id="roomDisplay"></span></h1>
+            <h1>Local Chat <span id="peerDisplay"></span></h1>
             <div class="status-container">
-                <span id="statusText">Connecting...</span>
+                <span id="statusText">Initializing...</span>
                 <span class="status-indicator" id="statusIndicator"></span>
             </div>
         </div>
@@ -240,13 +248,10 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
     <script>
-        let ws;
-        let currentRoom = '';
-        let reconnectAttempts = 0;
-        const maxReconnectAttempts = 5;
-        
-        // Get DOM elements
+        let peer;
+        let connection;
         const chatArea = document.getElementById('chatArea');
         const messageInput = document.getElementById('messageInput');
         const fileInput = document.getElementById('fileInput');
@@ -254,8 +259,9 @@
         const statusText = document.getElementById('statusText');
         const sendButton = document.getElementById('sendButton');
         const fileButton = document.getElementById('fileButton');
-        const roomDisplay = document.getElementById('roomDisplay');
-        const roomControls = document.getElementById('roomControls');
+        const peerDisplay = document.getElementById('peerDisplay');
+        const connectionControls = document.getElementById('connectionControls');
+        const myIdDisplay = document.getElementById('myId');
 
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
@@ -271,96 +277,69 @@
             }, 3000);
         }
 
-        function connectWebSocket() {
-            if (reconnectAttempts >= maxReconnectAttempts) {
-                showNotification('Maximum reconnection attempts reached. Please refresh the page.', 'error');
+        function initializePeer() {
+            peer = new Peer();
+
+            peer.on('open', (id) => {
+                console.log('My peer ID is:', id);
+                myIdDisplay.textContent = `Your ID: ${id}`;
+                statusText.textContent = 'Ready to connect';
+                showNotification('Ready to connect with peers');
+            });
+
+            peer.on('connection', (conn) => {
+                connection = conn;
+                setupConnection();
+                showNotification('Peer connected!');
+            });
+
+            peer.on('error', (error) => {
+                console.error('Peer error:', error);
+                showNotification('Connection error occurred', 'error');
+            });
+        }
+
+        function connectToPeer() {
+            const peerId = document.getElementById('peerId').value.trim();
+            if (!peerId) {
+                showNotification('Please enter a peer ID', 'error');
                 return;
             }
 
-            // Create WebSocket connection
-            ws = new WebSocket('ws://localhost:8080');  // Changed port to 8080
+            connection = peer.connect(peerId);
+            setupConnection();
+        }
 
-            ws.onopen = () => {
-                console.log('Connected to WebSocket server');
+        function setupConnection() {
+            connection.on('open', () => {
+                console.log('Connected to peer');
                 statusText.textContent = 'Connected';
                 statusIndicator.classList.add('connected');
-                reconnectAttempts = 0;
-                showNotification('Connected to server');
-            };
+                enableChat();
+                peerDisplay.textContent = ` - Connected to: ${connection.peer}`;
+                showNotification('Connected to peer');
+            });
 
-            ws.onclose = () => {
+            connection.on('data', handleMessage);
+
+            connection.on('close', () => {
                 statusText.textContent = 'Disconnected';
                 statusIndicator.classList.remove('connected');
                 disableChat();
-                reconnectAttempts++;
-                if (reconnectAttempts < maxReconnectAttempts) {
-                    setTimeout(connectWebSocket, 3000);
-                    showNotification('Connection lost. Attempting to reconnect...', 'error');
-                }
-            };
+                showNotification('Peer disconnected', 'error');
+            });
 
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
+            connection.on('error', (error) => {
+                console.error('Connection error:', error);
                 showNotification('Connection error occurred', 'error');
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    handleMessage(data);
-                } catch (error) {
-                    console.error('Error parsing message:', error);
-                }
-            };
-        }
-
-        function createRoom() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                showNotification('Not connected to server', 'error');
-                return;
-            }
-            
-            const roomId = Math.random().toString(36).substring(2, 8);
-            currentRoom = roomId;
-            
-            ws.send(JSON.stringify({
-                type: 'create-room',
-                roomId: roomId
-            }));
-            
-            roomDisplay.textContent = ` - Room: ${roomId}`;
-            enableChat();
-            showNotification(`Room created: ${roomId}`);
-        }
-
-        function joinRoom() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                showNotification('Not connected to server', 'error');
-                return;
-            }
-
-            const roomId = document.getElementById('roomId').value.trim();
-            if (!roomId) {
-                showNotification('Please enter a room ID', 'error');
-                return;
-            }
-
-            currentRoom = roomId;
-            ws.send(JSON.stringify({
-                type: 'join-room',
-                roomId: roomId
-            }));
-
-            roomDisplay.textContent = ` - Room: ${roomId}`;
-            enableChat();
-            showNotification(`Joined room: ${roomId}`);
+            });
         }
 
         function enableChat() {
             messageInput.disabled = false;
             sendButton.disabled = false;
             fileButton.disabled = false;
-            roomControls.classList.add('hidden');
+            connectionControls.classList.add('hidden');
             messageInput.focus();
         }
 
@@ -368,58 +347,37 @@
             messageInput.disabled = true;
             sendButton.disabled = true;
             fileButton.disabled = true;
-            roomControls.classList.remove('hidden');
-            currentRoom = '';
-            roomDisplay.textContent = '';
+            connectionControls.classList.remove('hidden');
+            peerDisplay.textContent = '';
         }
 
         function handleMessage(data) {
-            switch (data.type) {
-                case 'chat':
-                case 'file':
-                    displayMessage(data, data.sender === currentRoom ? 'sent' : 'received');
-                    break;
-                case 'error':
-                    showNotification(data.message, 'error');
-                    break;
+            if (data.type === 'chat') {
+                displayMessage(data, 'received');
+            } else if (data.type === 'file') {
+                displayFileMessage(data, 'received');
             }
         }
 
         function sendMessage() {
             const message = messageInput.value.trim();
-            if (!message || !currentRoom) return;
+            if (!message || !connection) return;
 
             const messageData = {
                 type: 'chat',
                 content: message,
-                roomId: currentRoom,
-                sender: currentRoom,
                 timestamp: new Date().toISOString()
             };
 
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify(messageData));
-                displayMessage(messageData, 'sent');
-                messageInput.value = '';
-            } else {
-                showNotification('Connection lost. Message not sent.', 'error');
-            }
+            connection.send(messageData);
+            displayMessage(messageData, 'sent');
+            messageInput.value = '';
         }
 
         function displayMessage(data, type) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
-
-            if (data.type === 'file') {
-                messageDiv.classList.add('file-message');
-                const link = document.createElement('a');
-                link.href = data.content;
-                link.download = data.filename;
-                link.innerHTML = `📎 ${data.filename}`;
-                messageDiv.appendChild(link);
-            } else {
-                messageDiv.textContent = data.content;
-            }
+            messageDiv.textContent = data.content;
 
             const timestamp = document.createElement('div');
             timestamp.style.fontSize = '0.8em';
@@ -432,12 +390,30 @@
             chatArea.scrollTop = chatArea.scrollHeight;
         }
 
-        // File handling
-        fileInput.onchange = async function() {
-            if (!currentRoom) return;
+        function displayFileMessage(data, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type} file-message`;
 
+            const link = document.createElement('a');
+            link.href = data.content;
+            link.download = data.filename;
+            link.innerHTML = `📎 ${data.filename}`;
+            messageDiv.appendChild(link);
+
+            const timestamp = document.createElement('div');
+            timestamp.style.fontSize = '0.8em';
+            timestamp.style.opacity = '0.7';
+            timestamp.style.marginTop = '5px';
+            timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
+            messageDiv.appendChild(timestamp);
+
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        fileInput.onchange = async function() {
             const file = this.files[0];
-            if (!file) return;
+            if (!file || !connection) return;
 
             if (file.size > 5 * 1024 * 1024) {
                 showNotification('File size must be less than 5MB', 'error');
@@ -451,24 +427,17 @@
                     type: 'file',
                     filename: file.name,
                     content: e.target.result,
-                    roomId: currentRoom,
-                    sender: currentRoom,
                     timestamp: new Date().toISOString()
                 };
 
-                if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify(messageData));
-                    displayMessage(messageData, 'sent');
-                    showNotification('File sent successfully');
-                } else {
-                    showNotification('Connection lost. File not sent.', 'error');
-                }
+                connection.send(messageData);
+                displayFileMessage(messageData, 'sent');
+                showNotification('File sent successfully');
             };
             reader.readAsDataURL(file);
             this.value = '';
         };
 
-        // Enter key to send message
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -476,8 +445,8 @@
             }
         });
 
-        // Start connection
-        connectWebSocket();
+        // Initialize peer connection
+        initializePeer();
     </script>
 </body>
 </html>
