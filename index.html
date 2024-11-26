@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -106,10 +107,17 @@
             padding: 20px;
             overflow-y: auto;
             background: #ffffff;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+
+        .messages-container {
+            display: flex;
+            flex-direction: column;
         }
 
         .message {
-            max-width: 70%;
+            max-width: 85%;
             padding: 12px 18px;
             border-radius: 20px;
             margin: 10px 0;
@@ -120,8 +128,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.received {
@@ -154,19 +169,77 @@
             bottom: 0;
         }
 
-        @media (max-width: 600px) {
-            .input-area {
-                padding: 10px;
-                gap: 8px;
+        @media (max-width: 768px) {
+            .message {
+                max-width: 95%;
             }
-            
-            .message-input {
-                font-size: 16px !important;
+        }
+
+        .file-preview {
+            margin-top: 10px;
+            max-width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .file-preview img {
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+        }
+
+        .file-preview.text {
+            background: #f8fafc;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .file-preview.pdf {
+            width: 100%;
+            height: 400px;
+        }
+
+        .file-preview.video {
+            max-width: 100%;
+            max-height: 300px;
+        }
+
+        .file-preview.audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .file-icon {
+            font-size: 24px;
+        }
+
+        .loading-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
             }
-            
-            .btn {
-                padding: 12px !important;
-                min-width: 44px;
+
+            100% {
+                transform: rotate(360deg);
             }
         }
 
@@ -230,16 +303,22 @@
             backdrop-filter: blur(5px);
         }
 
-        .notification.success { 
+        .notification.success {
             background: linear-gradient(135deg, #059669, #10b981);
         }
-        .notification.error { 
+
+        .notification.error {
             background: linear-gradient(135deg, #dc2626, #ef4444);
         }
 
         @keyframes slideIn {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
         }
 
         #myId {
@@ -256,6 +335,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div id="connectionControls">
@@ -266,7 +346,7 @@
                 <button class="btn" onclick="connectToPeer()">Connect</button>
             </div>
         </div>
-        
+
         <div class="header">
             <h1>Local Chat <span id="peerDisplay"></span></h1>
             <div class="status-container">
@@ -280,7 +360,8 @@
         <div class="input-area">
             <input type="text" class="message-input" id="messageInput" placeholder="Type a message..." disabled>
             <input type="file" id="fileInput" style="display: none">
-            <button class="btn" id="fileButton" onclick="document.getElementById('fileInput').click()" disabled>📎</button>
+            <button class="btn" id="fileButton" onclick="document.getElementById('fileInput').click()"
+                disabled>📎</button>
             <button class="btn" id="sendButton" onclick="sendMessage()" disabled>Send</button>
         </div>
     </div>
@@ -300,12 +381,94 @@
         const connectionControls = document.getElementById('connectionControls');
         const myIdDisplay = document.getElementById('myId');
 
+        function chunkedFileTransfer(file, connection) {
+            const CHUNK_SIZE = 64 * 1024;
+            const fileId = Math.random().toString(36).substring(7);
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+            connection.send({
+                type: 'file-meta',
+                fileId: fileId,
+                filename: file.name,
+                fileSize: file.size,
+                fileType: file.type,
+                totalChunks: totalChunks,
+                timestamp: new Date().toISOString()
+            });
+
+            displayLoadingMessage(file.name, 'sent');
+            let chunkIndex = 0;
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                connection.send({
+                    type: 'file-chunk',
+                    fileId: fileId,
+                    chunk: e.target.result,
+                    chunkIndex: chunkIndex,
+                    timestamp: new Date().toISOString()
+                });
+
+                chunkIndex++;
+                if (chunkIndex < totalChunks) {
+                    readNextChunk();
+                }
+            };
+
+            function readNextChunk() {
+                const start = chunkIndex * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = file.slice(start, end);
+                reader.readAsArrayBuffer(chunk);
+            }
+
+            readNextChunk();
+        }
+
+        // File receiving logic
+        const fileBuffers = new Map();
+
+        function handleFileTransfer(data) {
+            if (data.type === 'file-meta') {
+                fileBuffers.set(data.fileId, {
+                    meta: data,
+                    chunks: [],
+                    receivedChunks: 0
+                });
+                displayLoadingMessage(data.filename, 'received');
+            } else if (data.type === 'file-chunk') {
+                const fileData = fileBuffers.get(data.fileId);
+                if (fileData) {
+                    fileData.chunks[data.chunkIndex] = data.chunk;
+                    fileData.receivedChunks++;
+
+                    if (fileData.receivedChunks === fileData.meta.totalChunks) {
+                        // Combine chunks and display file
+                        const completeFile = new Blob(fileData.chunks, {
+                            type: fileData.meta.fileType
+                        });
+                        displayFileMessage({
+                            type: 'file',
+                            filename: fileData.meta.filename,
+                            content: URL.createObjectURL(completeFile),
+                            fileType: fileData.meta.fileType,
+                            timestamp: fileData.meta.timestamp
+                        }, 'received');
+
+                        // Clean up
+                        fileBuffers.delete(data.fileId);
+                        removeLoadingMessage();
+                    }
+                }
+            }
+        }
+
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.textContent = message;
             document.body.appendChild(notification);
-            
+
             setTimeout(() => {
                 notification.style.opacity = '0';
                 setTimeout(() => {
@@ -315,36 +478,36 @@
         }
 
         function generateShortId() {
-        return Math.floor(1000 + Math.random() * 9000).toString();
-    }
+            return Math.floor(1000 + Math.random() * 9000).toString();
+        }
 
-    function initializePeer() {
-        const shortId = generateShortId();
-        peer = new Peer(shortId);
+        function initializePeer() {
+            const shortId = generateShortId();
+            peer = new Peer(shortId);
 
-        peer.on('open', (id) => {
-            console.log('My peer ID is:', id);
-            myIdDisplay.textContent = `${id}`;
-            statusText.textContent = 'Ready to connect';
-            showNotification('Ready to connect with peers');
-        });
+            peer.on('open', (id) => {
+                console.log('My peer ID is:', id);
+                myIdDisplay.textContent = `${id}`;
+                statusText.textContent = 'Ready to connect';
+                showNotification('Ready to connect with peers');
+            });
 
-        peer.on('connection', (conn) => {
-            connection = conn;
-            setupConnection();
-            showNotification('Peer connected!');
-        });
+            peer.on('connection', (conn) => {
+                connection = conn;
+                setupConnection();
+                showNotification('Peer connected!');
+            });
 
-        peer.on('error', (error) => {
-            console.error('Peer error:', error);
-            showNotification('Connection error occurred', 'error');
-            // If ID is taken, try another
-            if (error.type === 'unavailable-id') {
-                peer.destroy();
-                initializePeer();
-            }
-        });
-    }
+            peer.on('error', (error) => {
+                console.error('Peer error:', error);
+                showNotification('Connection error occurred', 'error');
+                // If ID is taken, try another
+                if (error.type === 'unavailable-id') {
+                    peer.destroy();
+                    initializePeer();
+                }
+            });
+        }
 
         function connectToPeer() {
             const peerId = document.getElementById('peerId').value.trim();
@@ -421,6 +584,27 @@
             messageInput.value = '';
         }
 
+        function displayLoadingMessage(filename, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type} loading-message`;
+            messageDiv.innerHTML = `
+                <div class="file-info">
+                    <span class="loading-indicator"></span>
+                    <span>Transferring ${filename}...</span>
+                </div>
+            `;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function removeLoadingMessage() {
+            const loadingMessages = document.getElementsByClassName('loading-message');
+            while (loadingMessages.length > 0) {
+                loadingMessages[0].remove();
+            }
+        }
+
+
         function displayMessage(data, type) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
@@ -438,13 +622,73 @@
         }
 
         function displayFileMessage(data, type) {
+
+            // Update file input handler
+            fileInput.onchange = async function () {
+                const file = this.files[0];
+                if (!file || !connection) return;
+
+                // Increased size limit to 100MB
+                if (file.size > 100 * 1024 * 1024) {
+                    showNotification('File size must be less than 100MB', 'error');
+                    this.value = '';
+                    return;
+                }
+
+                chunkedFileTransfer(file, connection);
+                this.value = '';
+            };
+
+            // Update message handler
+            function handleMessage(data) {
+                if (data.type === 'chat') {
+                    displayMessage(data, 'received');
+                } else if (data.type === 'file-meta' || data.type === 'file-chunk') {
+                    handleFileTransfer(data);
+                } else if (data.type === 'file') {
+                    displayFileMessage(data, 'received');
+                }
+            }
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type} file-message`;
+
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'file-info';
+            fileInfo.innerHTML = `
+                <span class="file-icon">📎</span>
+                <span>${data.filename}</span>
+            `;
+            messageDiv.appendChild(fileInfo);
+
+            // Add file preview based on type
+            const preview = document.createElement('div');
+            preview.className = 'file-preview';
+
+            if (data.fileType.startsWith('image/')) {
+                preview.innerHTML = `<img src="${data.content}" alt="${data.filename}">`;
+            } else if (data.fileType === 'text/plain') {
+                fetch(data.content)
+                    .then(response => response.text())
+                    .then(text => {
+                        preview.className += ' text';
+                        preview.textContent = text;
+                    });
+            } else if (data.fileType === 'application/pdf') {
+                preview.innerHTML = `<embed src="${data.content}" type="application/pdf" class="pdf">`;
+            } else if (data.fileType.startsWith('video/')) {
+                preview.innerHTML = `<video src="${data.content}" controls class="video"></video>`;
+            } else if (data.fileType.startsWith('audio/')) {
+                preview.innerHTML = `<audio src="${data.content}" controls class="audio"></audio>`;
+            }
+
+            messageDiv.appendChild(preview);
 
             const link = document.createElement('a');
             link.href = data.content;
             link.download = data.filename;
-            link.innerHTML = `📎 ${data.filename}`;
+            link.innerHTML = `Download ${data.filename}`;
+            link.style.display = 'block';
+            link.style.marginTop = '10px';
             messageDiv.appendChild(link);
 
             const timestamp = document.createElement('div');
@@ -457,8 +701,27 @@
             chatArea.appendChild(messageDiv);
             chatArea.scrollTop = chatArea.scrollHeight;
         }
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type} file-message`;
 
-        fileInput.onchange = async function() {
+        const link = document.createElement('a');
+        link.href = data.content;
+        link.download = data.filename;
+        link.innerHTML = `📎 ${data.filename}`;
+        messageDiv.appendChild(link);
+
+        const timestamp = document.createElement('div');
+        timestamp.style.fontSize = '0.8em';
+        timestamp.style.opacity = '0.7';
+        timestamp.style.marginTop = '5px';
+        timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
+        messageDiv.appendChild(timestamp);
+
+        chatArea.appendChild(messageDiv);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    
+
+        fileInput.onchange = async function () {
             const file = this.files[0];
             if (!file || !connection) return;
 
@@ -495,4 +758,5 @@
         initializePeer();
     </script>
 </body>
+
 </html>
