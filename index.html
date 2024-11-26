@@ -3,144 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local Network Chat</title>
+    <title>Enhanced Local Chat</title>
     <style>
+        /* Previous styles remain the same */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
-            font-family: Arial, sans-serif;
-            background: #f0f2f5;
+            background: #1a1a2e;
             height: 100vh;
             padding: 20px;
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             height: calc(100vh - 40px);
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .header {
             padding: 20px;
-            border-bottom: 1px solid #ddd;
+            background: #16213e;
+            color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+
         .status-indicator {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: #dc3545;
-            margin-left: 10px;
             display: inline-block;
+            transition: background-color 0.3s;
         }
 
         .status-indicator.connected {
-            background: #28a745;
+            background: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        #roomControls {
+            padding: 30px;
+            background: #e8f0fe;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        #roomControls.hidden {
+            display: none;
+        }
+
+        .room-input-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        #roomId {
+            padding: 12px 20px;
+            border: 2px solid #16213e;
+            border-radius: 10px;
+            width: 300px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        #roomId:focus {
+            outline: none;
+            border-color: #0066cc;
+            box-shadow: 0 0 0 3px rgba(0,102,204,0.2);
         }
 
         .chat-area {
             flex-grow: 1;
             padding: 20px;
             overflow-y: auto;
+            background: #f8f9fa;
         }
 
         .message {
             max-width: 70%;
-            padding: 10px 15px;
-            border-radius: 15px;
-            margin: 5px 0;
+            padding: 12px 18px;
+            border-radius: 20px;
+            margin: 10px 0;
             clear: both;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .message.received {
-            background: #e9ecef;
+            background: #e3f2fd;
             float: left;
+            border-bottom-left-radius: 5px;
         }
 
         .message.sent {
-            background: #007bff;
+            background: #0066cc;
             color: white;
             float: right;
+            border-bottom-right-radius: 5px;
         }
 
         .file-message {
-            background: #d4edda !important;
-            color: #155724 !important;
+            background: #e8f5e9 !important;
+            color: #2e7d32 !important;
             cursor: pointer;
         }
 
         .input-area {
             padding: 20px;
-            border-top: 1px solid #ddd;
+            background: white;
+            border-top: 1px solid #eee;
             display: flex;
-            gap: 10px;
+            gap: 15px;
+            align-items: center;
         }
 
         .message-input {
             flex-grow: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
             outline: none;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .message-input:focus {
+            border-color: #0066cc;
         }
 
         .btn {
-            padding: 10px 20px;
+            padding: 12px 25px;
             border: none;
-            border-radius: 5px;
+            border-radius: 12px;
             cursor: pointer;
-            background: #007bff;
+            background: #0066cc;
             color: white;
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .file-preview {
-            max-width: 200px;
-            max-height: 200px;
-            margin-top: 10px;
-            border-radius: 5px;
+        .btn:hover {
+            background: #0052a3;
+            transform: translateY(-2px);
         }
 
-        #roomControls {
-            padding: 20px;
-            text-align: center;
-            background: #f8f9fa;
-            border-radius: 10px 10px 0 0;
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        #roomId {
-            padding: 10px;
-            margin-right: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            width: 200px;
+        .btn.secondary {
+            background: #e8f0fe;
+            color: #0066cc;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.success { background-color: #4CAF50; }
+        .notification.error { background-color: #dc3545; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div id="roomControls">
-            <input type="text" id="roomId" placeholder="Enter room ID">
-            <button class="btn" onclick="joinRoom()">Join Room</button>
-            <button class="btn" onclick="createRoom()">Create New Room</button>
+            <h2 style="margin-bottom: 20px; color: #16213e;">Join or Create a Chat Room</h2>
+            <div class="room-input-group">
+                <input type="text" id="roomId" placeholder="Enter room ID to join...">
+                <button class="btn" onclick="joinRoom()">Join Room</button>
+                <button class="btn secondary" onclick="createRoom()">Create New Room</button>
+            </div>
         </div>
         
         <div class="header">
             <h1>Local Chat <span id="roomDisplay"></span></h1>
-            <div>
-                <span id="statusText">Disconnected</span>
+            <div class="status-container">
+                <span id="statusText">Connecting...</span>
                 <span class="status-indicator" id="statusIndicator"></span>
             </div>
         </div>
@@ -150,14 +235,18 @@
         <div class="input-area">
             <input type="text" class="message-input" id="messageInput" placeholder="Type a message..." disabled>
             <input type="file" id="fileInput" style="display: none">
-            <button class="btn" onclick="document.getElementById('fileInput').click()" disabled id="fileButton">📎</button>
-            <button class="btn" onclick="sendMessage()" disabled id="sendButton">Send</button>
+            <button class="btn" id="fileButton" onclick="document.getElementById('fileInput').click()" disabled>📎</button>
+            <button class="btn" id="sendButton" onclick="sendMessage()" disabled>Send</button>
         </div>
     </div>
 
     <script>
         let ws;
         let currentRoom = '';
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        
+        // Get DOM elements
         const chatArea = document.getElementById('chatArea');
         const messageInput = document.getElementById('messageInput');
         const fileInput = document.getElementById('fileInput');
@@ -166,151 +255,195 @@
         const sendButton = document.getElementById('sendButton');
         const fileButton = document.getElementById('fileButton');
         const roomDisplay = document.getElementById('roomDisplay');
+        const roomControls = document.getElementById('roomControls');
 
-function connectWebSocket() {
-    ws = new WebSocket(`ws://${window.location.hostname}:3000`);
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
 
-    ws.onopen = () => {
-        statusText.textContent = 'Connected to server';
-        statusIndicator.classList.add('connected');
-    };
+        function connectWebSocket() {
+            if (reconnectAttempts >= maxReconnectAttempts) {
+                showNotification('Maximum reconnection attempts reached. Please refresh the page.', 'error');
+                return;
+            }
 
-    ws.onclose = () => {
-        statusText.textContent = 'Disconnected';
-        statusIndicator.classList.remove('connected');
-        disableChat();
-        setTimeout(connectWebSocket, 3000);
-    };
-
-    ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        statusText.textContent = 'Connection error';
-    };
-
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        handleMessage(data);
-    };
-}            // Use secure WebSocket if on HTTPS
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//local-chat-server.glitch.me`);
+            // Create WebSocket connection
+            ws = new WebSocket('ws://localhost:8080');  // Changed port to 8080
 
             ws.onopen = () => {
-                statusText.textContent = 'Connected to server';
+                console.log('Connected to WebSocket server');
+                statusText.textContent = 'Connected';
                 statusIndicator.classList.add('connected');
+                reconnectAttempts = 0;
+                showNotification('Connected to server');
             };
 
             ws.onclose = () => {
                 statusText.textContent = 'Disconnected';
                 statusIndicator.classList.remove('connected');
                 disableChat();
-                setTimeout(connectWebSocket, 3000);
+                reconnectAttempts++;
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    setTimeout(connectWebSocket, 3000);
+                    showNotification('Connection lost. Attempting to reconnect...', 'error');
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                showNotification('Connection error occurred', 'error');
             };
 
             ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                handleMessage(data);
+                try {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data);
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
             };
-        
-
-        function handleMessage(data) {
-            switch (data.type) {
-                case 'room-created':
-                    currentRoom = data.roomId;
-                    roomDisplay.textContent = `(Room: ${currentRoom})`;
-                    enableChat();
-                    break;
-                case 'room-joined':
-                    currentRoom = data.roomId;
-                    roomDisplay.textContent = `(Room: ${currentRoom})`;
-                    enableChat();
-                    break;
-                case 'chat':
-                case 'file':
-                    displayMessage(data, 'received');
-                    break;
-                case 'error':
-                    alert(data.message);
-                    break;
-            }
         }
 
         function createRoom() {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'create-room' }));
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                showNotification('Not connected to server', 'error');
+                return;
             }
+            
+            const roomId = Math.random().toString(36).substring(2, 8);
+            currentRoom = roomId;
+            
+            ws.send(JSON.stringify({
+                type: 'create-room',
+                roomId: roomId
+            }));
+            
+            roomDisplay.textContent = ` - Room: ${roomId}`;
+            enableChat();
+            showNotification(`Room created: ${roomId}`);
         }
 
         function joinRoom() {
-            const roomId = document.getElementById('roomId').value.trim();
-            if (!roomId) {
-                alert('Please enter a room ID');
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                showNotification('Not connected to server', 'error');
                 return;
             }
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'join-room', roomId }));
+
+            const roomId = document.getElementById('roomId').value.trim();
+            if (!roomId) {
+                showNotification('Please enter a room ID', 'error');
+                return;
             }
+
+            currentRoom = roomId;
+            ws.send(JSON.stringify({
+                type: 'join-room',
+                roomId: roomId
+            }));
+
+            roomDisplay.textContent = ` - Room: ${roomId}`;
+            enableChat();
+            showNotification(`Joined room: ${roomId}`);
         }
 
         function enableChat() {
             messageInput.disabled = false;
             sendButton.disabled = false;
             fileButton.disabled = false;
-            document.getElementById('roomControls').style.display = 'none';
+            roomControls.classList.add('hidden');
+            messageInput.focus();
         }
 
         function disableChat() {
             messageInput.disabled = true;
             sendButton.disabled = true;
             fileButton.disabled = true;
-            document.getElementById('roomControls').style.display = 'block';
+            roomControls.classList.remove('hidden');
+            currentRoom = '';
+            roomDisplay.textContent = '';
+        }
+
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'chat':
+                case 'file':
+                    displayMessage(data, data.sender === currentRoom ? 'sent' : 'received');
+                    break;
+                case 'error':
+                    showNotification(data.message, 'error');
+                    break;
+            }
         }
 
         function sendMessage() {
             const message = messageInput.value.trim();
-            if (message && ws.readyState === WebSocket.OPEN) {
-                const messageData = {
-                    type: 'chat',
-                    content: message,
-                    roomId: currentRoom,
-                    timestamp: new Date().toISOString()
-                };
+            if (!message || !currentRoom) return;
+
+            const messageData = {
+                type: 'chat',
+                content: message,
+                roomId: currentRoom,
+                sender: currentRoom,
+                timestamp: new Date().toISOString()
+            };
+
+            if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify(messageData));
                 displayMessage(messageData, 'sent');
                 messageInput.value = '';
+            } else {
+                showNotification('Connection lost. Message not sent.', 'error');
             }
         }
 
-       function displayMessage(data, type) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${type}`;
+        function displayMessage(data, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
 
-    const content = document.createElement('div');
-    content.textContent = data.content;
-    messageDiv.appendChild(content);
+            if (data.type === 'file') {
+                messageDiv.classList.add('file-message');
+                const link = document.createElement('a');
+                link.href = data.content;
+                link.download = data.filename;
+                link.innerHTML = `📎 ${data.filename}`;
+                messageDiv.appendChild(link);
+            } else {
+                messageDiv.textContent = data.content;
+            }
 
-    if (data.type === 'file') {
-        messageDiv.classList.add('file-message');
-        const link = document.createElement('a');
-        link.href = data.content;
-        link.download = data.filename;
-        link.textContent = `📎 ${data.filename}`;
-        messageDiv.appendChild(link);
-    }
+            const timestamp = document.createElement('div');
+            timestamp.style.fontSize = '0.8em';
+            timestamp.style.opacity = '0.7';
+            timestamp.style.marginTop = '5px';
+            timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
+            messageDiv.appendChild(timestamp);
 
-    const timestamp = document.createElement('div');
-    timestamp.style.fontSize = '0.8em';
-    timestamp.style.opacity = '0.7';
-    timestamp.style.marginTop = '5px';
-    timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
-    messageDiv.appendChild(timestamp);
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
 
-    chatArea.appendChild(messageDiv);
-    chatArea.scrollTop = chatArea.scrollHeight;
-}
+        // File handling
         fileInput.onchange = async function() {
+            if (!currentRoom) return;
+
             const file = this.files[0];
             if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                showNotification('File size must be less than 5MB', 'error');
+                this.value = '';
+                return;
+            }
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -318,17 +451,24 @@ function connectWebSocket() {
                     type: 'file',
                     filename: file.name,
                     content: e.target.result,
-                    fileType: file.type,
                     roomId: currentRoom,
+                    sender: currentRoom,
                     timestamp: new Date().toISOString()
                 };
-                ws.send(JSON.stringify(messageData));
-                displayMessage(messageData, 'sent');
+
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(messageData));
+                    displayMessage(messageData, 'sent');
+                    showNotification('File sent successfully');
+                } else {
+                    showNotification('Connection lost. File not sent.', 'error');
+                }
             };
             reader.readAsDataURL(file);
             this.value = '';
         };
 
+        // Enter key to send message
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
