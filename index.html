@@ -322,16 +322,17 @@
         }
 
         #myId {
-            background: rgba(255, 255, 255, 0.15);
+            background: #ffffff;
             padding: 12px 20px;
             border-radius: 12px;
-            font-size: 1.5em;
+            font-size: 24px;
             margin: 15px auto;
-            max-width: 200px;
+            max-width: fit-content;
             letter-spacing: 2px;
-            backdrop-filter: blur(5px);
             color: #1a4d2e;
             font-weight: bold;
+            border: 2px solid #2c6e49;
+            display: block;
         }
     </style>
 </head>
@@ -340,7 +341,7 @@
     <div class="container">
         <div id="connectionControls">
             <h2 style="margin-bottom: 20px; color: #16213e;">Connect with Peers</h2>
-            <div id="myId"></div>
+            <div id="myId">Generating ID...</div>
             <div class="connection-input-group" style="margin-top: 20px;">
                 <input type="text" id="peerId" placeholder="Enter peer ID to connect...">
                 <button class="btn" onclick="connectToPeer()">Connect</button>
@@ -370,6 +371,7 @@
     <script>
         let peer;
         let connection;
+        const myIdDisplay = document.getElementById('myId');
         const chatArea = document.getElementById('chatArea');
         const messageInput = document.getElementById('messageInput');
         const fileInput = document.getElementById('fileInput');
@@ -379,7 +381,7 @@
         const fileButton = document.getElementById('fileButton');
         const peerDisplay = document.getElementById('peerDisplay');
         const connectionControls = document.getElementById('connectionControls');
-        const myIdDisplay = document.getElementById('myId');
+
 
         function chunkedFileTransfer(file, connection) {
             const CHUNK_SIZE = 64 * 1024;
@@ -425,7 +427,6 @@
             readNextChunk();
         }
 
-        // File receiving logic
         const fileBuffers = new Map();
 
         function handleFileTransfer(data) {
@@ -443,7 +444,6 @@
                     fileData.receivedChunks++;
 
                     if (fileData.receivedChunks === fileData.meta.totalChunks) {
-                        // Combine chunks and display file
                         const completeFile = new Blob(fileData.chunks, {
                             type: fileData.meta.fileType
                         });
@@ -455,7 +455,6 @@
                             timestamp: fileData.meta.timestamp
                         }, 'received');
 
-                        // Clean up
                         fileBuffers.delete(data.fileId);
                         removeLoadingMessage();
                     }
@@ -482,32 +481,72 @@
         }
 
         function initializePeer() {
-            const shortId = generateShortId();
-            peer = new Peer(shortId);
+            try {
 
-            peer.on('open', (id) => {
-                console.log('My peer ID is:', id);
-                myIdDisplay.textContent = `${id}`;
-                statusText.textContent = 'Ready to connect';
-                showNotification('Ready to connect with peers');
-            });
+                const shortId = generateShortId();
+                console.log("Generated ID:", shortId);
 
-            peer.on('connection', (conn) => {
-                connection = conn;
-                setupConnection();
-                showNotification('Peer connected!');
-            });
 
-            peer.on('error', (error) => {
-                console.error('Peer error:', error);
-                showNotification('Connection error occurred', 'error');
-                // If ID is taken, try another
-                if (error.type === 'unavailable-id') {
-                    peer.destroy();
-                    initializePeer();
-                }
-            });
+                peer = new Peer(shortId, {
+                    debug: 2
+                });
+
+                const myIdDisplay = document.getElementById('myId');
+                myIdDisplay.textContent = shortId;
+
+                peer.on('open', (id) => {
+                    console.log('Peer connection opened with ID:', id);
+                    myIdDisplay.textContent = id;
+                    statusText.textContent = 'Ready to connect';
+                    showNotification('Ready to connect with peers');
+                });
+
+                peer.on('connection', (conn) => {
+                    connection = conn;
+                    setupConnection();
+                    showNotification('Peer connected!');
+                });
+
+                peer.on('error', (error) => {
+                    console.error('Peer error:', error);
+                    showNotification('Connection error occurred', 'error');
+                    if (error.type === 'unavailable-id') {
+                        peer.destroy();
+                        initializePeer();
+                    }
+                });
+            } catch (error) {
+                console.error('Error initializing peer:', error);
+                showNotification('Failed to initialize connection', 'error');
+            }
         }
+        const shortId = generateShortId();
+        peer = new Peer(shortId);
+
+        myIdDisplay.textContent = shortId;
+
+        peer.on('open', (id) => {
+            console.log('My peer ID is:', id);
+            myIdDisplay.textContent = `${id}`;
+            statusText.textContent = 'Ready to connect';
+            showNotification('Ready to connect with peers');
+        });
+
+        peer.on('connection', (conn) => {
+            connection = conn;
+            setupConnection();
+            showNotification('Peer connected!');
+        });
+
+        peer.on('error', (error) => {
+            console.error('Peer error:', error);
+            showNotification('Connection error occurred', 'error');
+            if (error.type === 'unavailable-id') {
+                peer.destroy();
+                initializePeer();
+            }
+        });
+
 
         function connectToPeer() {
             const peerId = document.getElementById('peerId').value.trim();
@@ -623,12 +662,10 @@
 
         function displayFileMessage(data, type) {
 
-            // Update file input handler
             fileInput.onchange = async function () {
                 const file = this.files[0];
                 if (!file || !connection) return;
 
-                // Increased size limit to 100MB
                 if (file.size > 100 * 1024 * 1024) {
                     showNotification('File size must be less than 100MB', 'error');
                     this.value = '';
@@ -639,7 +676,6 @@
                 this.value = '';
             };
 
-            // Update message handler
             function handleMessage(data) {
                 if (data.type === 'chat') {
                     displayMessage(data, 'received');
@@ -660,7 +696,6 @@
             `;
             messageDiv.appendChild(fileInfo);
 
-            // Add file preview based on type
             const preview = document.createElement('div');
             preview.className = 'file-preview';
 
@@ -719,7 +754,7 @@
 
         chatArea.appendChild(messageDiv);
         chatArea.scrollTop = chatArea.scrollHeight;
-    
+
 
         fileInput.onchange = async function () {
             const file = this.files[0];
