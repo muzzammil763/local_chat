@@ -281,39 +281,33 @@ function connectWebSocket() {
             }
         }
 
-        function displayMessage(data, type) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}`;
+       function displayMessage(data, type) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}`;
 
-            if (data.type === 'file') {
-                messageDiv.classList.add('file-message');
-                if (data.fileType.startsWith('image/')) {
-                    const img = document.createElement('img');
-                    img.src = data.content;
-                    img.className = 'file-preview';
-                    messageDiv.appendChild(img);
-                }
+    const content = document.createElement('div');
+    content.textContent = data.content;
+    messageDiv.appendChild(content);
 
-                const link = document.createElement('a');
-                link.href = data.content;
-                link.download = data.filename;
-                link.textContent = `📎 ${data.filename}`;
-                messageDiv.appendChild(link);
-            } else {
-                messageDiv.textContent = data.content;
-            }
+    if (data.type === 'file') {
+        messageDiv.classList.add('file-message');
+        const link = document.createElement('a');
+        link.href = data.content;
+        link.download = data.filename;
+        link.textContent = `📎 ${data.filename}`;
+        messageDiv.appendChild(link);
+    }
 
-            const timestamp = document.createElement('div');
-            timestamp.style.fontSize = '0.8em';
-            timestamp.style.opacity = '0.7';
-            timestamp.style.marginTop = '5px';
-            timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
-            messageDiv.appendChild(timestamp);
+    const timestamp = document.createElement('div');
+    timestamp.style.fontSize = '0.8em';
+    timestamp.style.opacity = '0.7';
+    timestamp.style.marginTop = '5px';
+    timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
+    messageDiv.appendChild(timestamp);
 
-            chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
+    chatArea.appendChild(messageDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
         fileInput.onchange = async function() {
             const file = this.files[0];
             if (!file) return;
