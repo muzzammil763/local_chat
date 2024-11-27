@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>P2P Local Chat</title>
+
     <style>
         * {
             margin: 0;
@@ -14,7 +15,7 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1a4d2e, #2c6e49);
+            background: linear-gradient(135deg, #0b4f26, #2c6e49);
             min-height: 100vh;
             padding: 15px;
             display: flex;
@@ -38,7 +39,7 @@
 
         .header {
             padding: 20px;
-            background: linear-gradient(135deg, #2c6e49, #4c956c);
+            background: linear-gradient(135deg, #2c6e49, #05170d);
             color: white;
             display: flex;
             justify-content: space-between;
@@ -96,8 +97,8 @@
             padding: 12px 20px;
             border: 2px solid #2c6e49;
             border-radius: 10px;
-            width: 200px;
-            font-size: 20px;
+            width: 60%;
+            font-size: 16px;
             transition: all 0.3s;
             text-align: center;
             letter-spacing: 2px;
@@ -123,7 +124,7 @@
             max-width: 85%;
             padding: 12px 18px;
             border-radius: 20px;
-            margin: 10px 0;
+            margin: 0px 0;
             clear: both;
             position: relative;
             animation: fadeIn 0.3s ease;
@@ -169,7 +170,6 @@
             position: relative;
             animation: fadeIn 0.3s ease;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            /* Remove float property */
             clear: both;
         }
 
@@ -355,6 +355,14 @@
         const sendButton = document.getElementById('sendButton');
         const peerDisplay = document.getElementById('peerDisplay');
         const connectionControls = document.getElementById('connectionControls');
+        const peerIdInput = document.getElementById('peerId'); 
+
+        peerIdInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                connectToPeer();
+            }
+        });
 
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
