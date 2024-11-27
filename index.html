@@ -17,19 +17,24 @@
             background: linear-gradient(135deg, #1a4d2e, #2c6e49);
             min-height: 100vh;
             padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 75vh;
+            max-height: 70vh;
+            width: 100%;
+
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            min-height: calc(100vh - 30px);
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
             backdrop-filter: blur(10px);
+            position: relative;
         }
 
         .header {
@@ -40,6 +45,9 @@
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .status-container {
@@ -89,7 +97,7 @@
             padding: 12px 20px;
             border: 2px solid #2c6e49;
             border-radius: 10px;
-            width: 160px;
+            width: 200px;
             font-size: 20px;
             transition: all 0.3s;
             text-align: center;
@@ -108,7 +116,9 @@
             overflow-y: auto;
             background: #ffffff;
             display: flex;
-            flex-direction: column-reverse;
+            flex-direction: column;
+            height: 400px;
+            /* Set a fixed height */
         }
 
         .messages-container {
@@ -159,7 +169,7 @@
         }
 
         .input-area {
-            padding: 10px;
+            padding: 8px;
             background: white;
             border-top: 1px solid #eee;
             display: flex;
@@ -168,13 +178,15 @@
             position: sticky;
             bottom: 0;
             width: 100%;
+            z-index: 10;
         }
 
         @media (max-width: 768px) {
             .container {
+                width: 85%;
                 margin: 0;
-                min-height: 100vh;
-                border-radius: 0;
+                min-height: 70vh;
+                border-radius: 12;
             }
 
             .input-area {
@@ -309,6 +321,7 @@
             min-width: 44px;
             flex-shrink: 0;
         }
+
         .btn:hover {
             background: #4c956c;
             transform: translateY(-2px);
@@ -359,13 +372,11 @@
             background: #ffffff;
             padding: 12px 20px;
             border-radius: 12px;
-            font-size: 24px;
+            font-size: 20px;
             margin: 15px auto;
             max-width: fit-content;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             color: #1a4d2e;
-            font-weight: bold;
-            border: 2px solid #2c6e49;
             display: block;
         }
     </style>
@@ -374,16 +385,16 @@
 <body>
     <div class="container">
         <div id="connectionControls">
-            <h2 style="margin-bottom: 20px; color: #16213e;">Connect with Peers</h2>
+            <h2 style="margin-bottom: 24px; color: #16213e;">Connect with Peers</h2>
             <div id="myId">Generating ID...</div>
-            <div class="connection-input-group" style="margin-top: 20px;">
+            <div class="connection-input-group" style="margin-top: 32px;">
                 <input type="text" id="peerId" placeholder="Enter peer ID to connect...">
                 <button class="btn" onclick="connectToPeer()">Connect</button>
             </div>
         </div>
 
         <div class="header">
-            <h1>Local Chat <span id="peerDisplay"></span></h1>
+            <h2>Local Chat <span id="peerDisplay"></span></h2>
             <div class="status-container">
                 <span id="statusText">Initializing...</span>
                 <span class="status-indicator" id="statusIndicator"></span>
@@ -393,10 +404,11 @@
         <div class="chat-area" id="chatArea"></div>
 
         <div class="input-area">
-            <input type="text" class="message-input" id="messageInput" placeholder="Type a message..." disabled>
-            <input type="file" id="fileInput" style="display: none">
             <button class="btn" id="fileButton" onclick="document.getElementById('fileInput').click()"
                 disabled>📎</button>
+            <input type="text" class="message-input" id="messageInput" placeholder="Type a message..." disabled>
+            <input type="file" id="fileInput" style="display: none">
+
             <button class="btn" id="sendButton" onclick="sendMessage()" disabled>Send</button>
         </div>
     </div>
@@ -416,9 +428,8 @@
         const peerDisplay = document.getElementById('peerDisplay');
         const connectionControls = document.getElementById('connectionControls');
 
-
         function chunkedFileTransfer(file, connection) {
-            const CHUNK_SIZE = 64 * 1024;
+            const CHUNK_SIZE = 256 * 1024;
             const fileId = Math.random().toString(36).substring(7);
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
@@ -516,10 +527,8 @@
 
         function initializePeer() {
             try {
-
                 const shortId = generateShortId();
                 console.log("Generated ID:", shortId);
-
 
                 peer = new Peer(shortId, {
                     debug: 2
@@ -554,33 +563,6 @@
                 showNotification('Failed to initialize connection', 'error');
             }
         }
-        const shortId = generateShortId();
-        peer = new Peer(shortId);
-
-        myIdDisplay.textContent = shortId;
-
-        peer.on('open', (id) => {
-            console.log('My peer ID is:', id);
-            myIdDisplay.textContent = `${id}`;
-            statusText.textContent = 'Ready to connect';
-            showNotification('Ready to connect with peers');
-        });
-
-        peer.on('connection', (conn) => {
-            connection = conn;
-            setupConnection();
-            showNotification('Peer connected!');
-        });
-
-        peer.on('error', (error) => {
-            console.error('Peer error:', error);
-            showNotification('Connection error occurred', 'error');
-            if (error.type === 'unavailable-id') {
-                peer.destroy();
-                initializePeer();
-            }
-        });
-
 
         function connectToPeer() {
             const peerId = document.getElementById('peerId').value.trim();
@@ -677,7 +659,6 @@
             }
         }
 
-
         function displayMessage(data, type) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
@@ -695,30 +676,6 @@
         }
 
         function displayFileMessage(data, type) {
-
-            fileInput.onchange = async function () {
-                const file = this.files[0];
-                if (!file || !connection) return;
-
-                if (file.size > 100 * 1024 * 1024) {
-                    showNotification('File size must be less than 100MB', 'error');
-                    this.value = '';
-                    return;
-                }
-
-                chunkedFileTransfer(file, connection);
-                this.value = '';
-            };
-
-            function handleMessage(data) {
-                if (data.type === 'chat') {
-                    displayMessage(data, 'received');
-                } else if (data.type === 'file-meta' || data.type === 'file-chunk') {
-                    handleFileTransfer(data);
-                } else if (data.type === 'file') {
-                    displayFileMessage(data, 'received');
-                }
-            }
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type} file-message`;
 
@@ -770,50 +727,18 @@
             chatArea.appendChild(messageDiv);
             chatArea.scrollTop = chatArea.scrollHeight;
         }
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type} file-message`;
-
-        const link = document.createElement('a');
-        link.href = data.content;
-        link.download = data.filename;
-        link.innerHTML = `📎 ${data.filename}`;
-        messageDiv.appendChild(link);
-
-        const timestamp = document.createElement('div');
-        timestamp.style.fontSize = '0.8em';
-        timestamp.style.opacity = '0.7';
-        timestamp.style.marginTop = '5px';
-        timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
-        messageDiv.appendChild(timestamp);
-
-        chatArea.appendChild(messageDiv);
-        chatArea.scrollTop = chatArea.scrollHeight;
-
 
         fileInput.onchange = async function () {
             const file = this.files[0];
             if (!file || !connection) return;
 
-            if (file.size > 5 * 1024 * 1024) {
-                showNotification('File size must be less than 5MB', 'error');
+            if (file.size > 100 * 1024 * 1024) {
+                showNotification('File size must be less than 100MB', 'error');
                 this.value = '';
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const messageData = {
-                    type: 'file',
-                    filename: file.name,
-                    content: e.target.result,
-                    timestamp: new Date().toISOString()
-                };
-
-                connection.send(messageData);
-                displayFileMessage(messageData, 'sent');
-                showNotification('File sent successfully');
-            };
-            reader.readAsDataURL(file);
+            chunkedFileTransfer(file, connection);
             this.value = '';
         };
 
