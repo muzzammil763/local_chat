@@ -26,7 +26,6 @@
             max-width: 75vh;
             max-height: 70vh;
             width: 100%;
-
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -118,12 +117,6 @@
             display: flex;
             flex-direction: column;
             height: 400px;
-            /* Set a fixed height */
-        }
-
-        .messages-container {
-            display: flex;
-            flex-direction: column;
         }
 
         .message {
@@ -149,23 +142,47 @@
             }
         }
 
+        .messages-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .message-wrapper {
+            width: 100%;
+            display: flex;
+            margin: 10px 0;
+        }
+
+        .message-wrapper.sent {
+            justify-content: flex-end;
+        }
+
+        .message-wrapper.received {
+            justify-content: flex-start;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 18px;
+            border-radius: 20px;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            /* Remove float property */
+            clear: both;
+        }
+
         .message.received {
             background: linear-gradient(135deg, #e7f5ff, #d0ebff);
-            float: left;
             border-bottom-left-radius: 5px;
+            color: black;
         }
 
         .message.sent {
             background: linear-gradient(135deg, #2c6e49, #4c956c);
             color: white;
-            float: right;
             border-bottom-right-radius: 5px;
-        }
-
-        .file-message {
-            background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
-            color: #166534 !important;
-            cursor: pointer;
         }
 
         .input-area {
@@ -179,113 +196,6 @@
             bottom: 0;
             width: 100%;
             z-index: 10;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                width: 85%;
-                margin: 0;
-                min-height: 70vh;
-                border-radius: 12;
-            }
-
-            .input-area {
-                padding: 8px;
-                gap: 6px;
-            }
-
-            .message-input {
-                padding: 8px 12px;
-                font-size: 14px;
-            }
-
-            .btn {
-                padding: 8px 12px;
-                font-size: 14px;
-                min-width: 40px;
-            }
-
-            #fileButton {
-                padding: 8px;
-                min-width: 36px;
-            }
-
-            #sendButton {
-                padding: 8px 15px;
-                min-width: 50px;
-            }
-
-            body {
-                padding: 0;
-            }
-        }
-
-        .file-preview {
-            margin-top: 10px;
-            max-width: 100%;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .file-preview img {
-            max-width: 100%;
-            max-height: 300px;
-            object-fit: contain;
-        }
-
-        .file-preview.text {
-            background: #f8fafc;
-            padding: 15px;
-            max-height: 200px;
-            overflow-y: auto;
-            font-family: monospace;
-            white-space: pre-wrap;
-        }
-
-        .file-preview.pdf {
-            width: 100%;
-            height: 400px;
-        }
-
-        .file-preview.video {
-            max-width: 100%;
-            max-height: 300px;
-        }
-
-        .file-preview.audio {
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .file-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .file-icon {
-            font-size: 24px;
-        }
-
-        .loading-indicator {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
         }
 
         .message-input {
@@ -333,11 +243,6 @@
             transform: none;
         }
 
-        .btn.secondary {
-            background: #e2e8f0;
-            color: #2c6e49;
-        }
-
         .notification {
             position: fixed;
             top: 20px;
@@ -379,6 +284,35 @@
             color: #1a4d2e;
             display: block;
         }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 85%;
+                margin: 0;
+                min-height: 70vh;
+                border-radius: 12px;
+            }
+
+            .input-area {
+                padding: 8px;
+                gap: 6px;
+            }
+
+            .message-input {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+
+            .btn {
+                padding: 8px 12px;
+                font-size: 14px;
+                min-width: 40px;
+            }
+
+            body {
+                padding: 0;
+            }
+        }
     </style>
 </head>
 
@@ -404,11 +338,7 @@
         <div class="chat-area" id="chatArea"></div>
 
         <div class="input-area">
-            <button class="btn" id="fileButton" onclick="document.getElementById('fileInput').click()"
-                disabled>📎</button>
             <input type="text" class="message-input" id="messageInput" placeholder="Type a message..." disabled>
-            <input type="file" id="fileInput" style="display: none">
-
             <button class="btn" id="sendButton" onclick="sendMessage()" disabled>Send</button>
         </div>
     </div>
@@ -420,92 +350,11 @@
         const myIdDisplay = document.getElementById('myId');
         const chatArea = document.getElementById('chatArea');
         const messageInput = document.getElementById('messageInput');
-        const fileInput = document.getElementById('fileInput');
         const statusIndicator = document.getElementById('statusIndicator');
         const statusText = document.getElementById('statusText');
         const sendButton = document.getElementById('sendButton');
-        const fileButton = document.getElementById('fileButton');
         const peerDisplay = document.getElementById('peerDisplay');
         const connectionControls = document.getElementById('connectionControls');
-
-        function chunkedFileTransfer(file, connection) {
-            const CHUNK_SIZE = 256 * 1024;
-            const fileId = Math.random().toString(36).substring(7);
-            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-
-            connection.send({
-                type: 'file-meta',
-                fileId: fileId,
-                filename: file.name,
-                fileSize: file.size,
-                fileType: file.type,
-                totalChunks: totalChunks,
-                timestamp: new Date().toISOString()
-            });
-
-            displayLoadingMessage(file.name, 'sent');
-            let chunkIndex = 0;
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-                connection.send({
-                    type: 'file-chunk',
-                    fileId: fileId,
-                    chunk: e.target.result,
-                    chunkIndex: chunkIndex,
-                    timestamp: new Date().toISOString()
-                });
-
-                chunkIndex++;
-                if (chunkIndex < totalChunks) {
-                    readNextChunk();
-                }
-            };
-
-            function readNextChunk() {
-                const start = chunkIndex * CHUNK_SIZE;
-                const end = Math.min(start + CHUNK_SIZE, file.size);
-                const chunk = file.slice(start, end);
-                reader.readAsArrayBuffer(chunk);
-            }
-
-            readNextChunk();
-        }
-
-        const fileBuffers = new Map();
-
-        function handleFileTransfer(data) {
-            if (data.type === 'file-meta') {
-                fileBuffers.set(data.fileId, {
-                    meta: data,
-                    chunks: [],
-                    receivedChunks: 0
-                });
-                displayLoadingMessage(data.filename, 'received');
-            } else if (data.type === 'file-chunk') {
-                const fileData = fileBuffers.get(data.fileId);
-                if (fileData) {
-                    fileData.chunks[data.chunkIndex] = data.chunk;
-                    fileData.receivedChunks++;
-
-                    if (fileData.receivedChunks === fileData.meta.totalChunks) {
-                        const completeFile = new Blob(fileData.chunks, {
-                            type: fileData.meta.fileType
-                        });
-                        displayFileMessage({
-                            type: 'file',
-                            filename: fileData.meta.filename,
-                            content: URL.createObjectURL(completeFile),
-                            fileType: fileData.meta.fileType,
-                            timestamp: fileData.meta.timestamp
-                        }, 'received');
-
-                        fileBuffers.delete(data.fileId);
-                        removeLoadingMessage();
-                    }
-                }
-            }
-        }
 
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
@@ -534,7 +383,6 @@
                     debug: 2
                 });
 
-                const myIdDisplay = document.getElementById('myId');
                 myIdDisplay.textContent = shortId;
 
                 peer.on('open', (id) => {
@@ -585,7 +433,9 @@
                 showNotification('Connected to peer');
             });
 
-            connection.on('data', handleMessage);
+            connection.on('data', (data) => {
+                displayMessage(data, 'received');
+            });
 
             connection.on('close', () => {
                 statusText.textContent = 'Disconnected';
@@ -603,7 +453,6 @@
         function enableChat() {
             messageInput.disabled = false;
             sendButton.disabled = false;
-            fileButton.disabled = false;
             connectionControls.classList.add('hidden');
             messageInput.focus();
         }
@@ -611,17 +460,8 @@
         function disableChat() {
             messageInput.disabled = true;
             sendButton.disabled = true;
-            fileButton.disabled = true;
             connectionControls.classList.remove('hidden');
             peerDisplay.textContent = '';
-        }
-
-        function handleMessage(data) {
-            if (data.type === 'chat') {
-                displayMessage(data, 'received');
-            } else if (data.type === 'file') {
-                displayFileMessage(data, 'received');
-            }
         }
 
         function sendMessage() {
@@ -639,27 +479,10 @@
             messageInput.value = '';
         }
 
-        function displayLoadingMessage(filename, type) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type} loading-message`;
-            messageDiv.innerHTML = `
-                <div class="file-info">
-                    <span class="loading-indicator"></span>
-                    <span>Transferring ${filename}...</span>
-                </div>
-            `;
-            chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
-        function removeLoadingMessage() {
-            const loadingMessages = document.getElementsByClassName('loading-message');
-            while (loadingMessages.length > 0) {
-                loadingMessages[0].remove();
-            }
-        }
-
         function displayMessage(data, type) {
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.className = `message-wrapper ${type}`;
+
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
             messageDiv.textContent = data.content;
@@ -671,76 +494,11 @@
             timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
             messageDiv.appendChild(timestamp);
 
-            chatArea.appendChild(messageDiv);
+            wrapperDiv.appendChild(messageDiv);
+
+            chatArea.appendChild(wrapperDiv);
             chatArea.scrollTop = chatArea.scrollHeight;
         }
-
-        function displayFileMessage(data, type) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type} file-message`;
-
-            const fileInfo = document.createElement('div');
-            fileInfo.className = 'file-info';
-            fileInfo.innerHTML = `
-                <span class="file-icon">📎</span>
-                <span>${data.filename}</span>
-            `;
-            messageDiv.appendChild(fileInfo);
-
-            const preview = document.createElement('div');
-            preview.className = 'file-preview';
-
-            if (data.fileType.startsWith('image/')) {
-                preview.innerHTML = `<img src="${data.content}" alt="${data.filename}">`;
-            } else if (data.fileType === 'text/plain') {
-                fetch(data.content)
-                    .then(response => response.text())
-                    .then(text => {
-                        preview.className += ' text';
-                        preview.textContent = text;
-                    });
-            } else if (data.fileType === 'application/pdf') {
-                preview.innerHTML = `<embed src="${data.content}" type="application/pdf" class="pdf">`;
-            } else if (data.fileType.startsWith('video/')) {
-                preview.innerHTML = `<video src="${data.content}" controls class="video"></video>`;
-            } else if (data.fileType.startsWith('audio/')) {
-                preview.innerHTML = `<audio src="${data.content}" controls class="audio"></audio>`;
-            }
-
-            messageDiv.appendChild(preview);
-
-            const link = document.createElement('a');
-            link.href = data.content;
-            link.download = data.filename;
-            link.innerHTML = `Download ${data.filename}`;
-            link.style.display = 'block';
-            link.style.marginTop = '10px';
-            messageDiv.appendChild(link);
-
-            const timestamp = document.createElement('div');
-            timestamp.style.fontSize = '0.8em';
-            timestamp.style.opacity = '0.7';
-            timestamp.style.marginTop = '5px';
-            timestamp.textContent = new Date(data.timestamp).toLocaleTimeString();
-            messageDiv.appendChild(timestamp);
-
-            chatArea.appendChild(messageDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
-        fileInput.onchange = async function () {
-            const file = this.files[0];
-            if (!file || !connection) return;
-
-            if (file.size > 100 * 1024 * 1024) {
-                showNotification('File size must be less than 100MB', 'error');
-                this.value = '';
-                return;
-            }
-
-            chunkedFileTransfer(file, connection);
-            this.value = '';
-        };
 
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
